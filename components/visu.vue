@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import * as THREE from 'three';
-import { usePointer } from '@vueuse/core'
-import { chargerModeles } from '../utils/modeles'
+import { objectPick, usePointer } from '@vueuse/core'
+import { useBroadcastChannel } from '@vueuse/core';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import type { Ref } from 'vue';
+
+// Prépare le système de message vers le parent.
+const {
+  data,
+} = useBroadcastChannel<{ x: number, y: number, z: number}, void>({ name: '3D' })
 
 // Référence
 const canvas : Ref<HTMLCanvasElement | undefined> = ref(undefined);
@@ -15,12 +22,34 @@ const { x, y, pressure } = usePointer({
 const ratio = computed(() => { return canvas.value ? (canvas.value.clientWidth / canvas.value.clientHeight) : 1 })
 
 // Préparation des éléments de ThreeJS.
+const loader = new FBXLoader();
 const scene = new THREE.Scene();
 let renderer : THREE.WebGLRenderer | undefined = undefined;
 let controleOrbite : OrbitControls | undefined = undefined;
 
 // Chargement des modèles
-const [ lampe ] = await chargerModeles();
+const lampe = await loader.loadAsync("lampe.fbx");
+
+console.log(lampe);
+
+const [ support, bras1, bras2, cone, brashorizontal ] = lampe.children;
+
+// Préparation des groupes et point spécifique pour la lampe en fonction des moteurs.
+const groupe_M1 = new THREE.Group();
+const groupe_M2 = new THREE.Group();
+const groupe_M3 = new THREE.Group();
+const groupe_M4 = new THREE.Group();
+const groupe_Lampe = new THREE.Group();
+
+groupe_M4.add(cone);
+groupe_M3.add(bras2, groupe_M4);
+groupe_M2.add(bras1, groupe_M3);
+groupe_M1.add(brashorizontal, groupe_M2);
+groupe_Lampe.add(support, groupe_M1);
+
+const axesHelper = new THREE.AxesHelper( 100 );
+axesHelper.position.set(groupe_M4.position.x, groupe_M4.position.y, groupe_M4.position.z);
+scene.add( axesHelper );
 
 // Préparation de la caméra.
 const camera = new THREE.PerspectiveCamera( 75, ratio.value, 100, 5000 );
@@ -33,6 +62,7 @@ scene.add(camera);
 const pointeur = new THREE.Vector2(0, 0);
 const raycaster = new THREE.Raycaster();
 let objetVise : THREE.Intersection | undefined = undefined;
+let objetClique : THREE.Intersection | undefined = undefined;
 
 // Ajout de la lumière
 const color = 0xFFFFFF;
@@ -49,25 +79,24 @@ scene.add( gridHelper );
 scene.background = new THREE.Color('#1F2640');
 
 // Affichage de la lampe
-lampe.rotateX(-Math.PI / 2);
-lampe.position.set(0, -50, 0);
-scene.add(lampe);
+groupe_Lampe.rotateX(-Math.PI / 2);
+groupe_Lampe.position.set(0, -50, 0);
+scene.add(groupe_Lampe);
 
 // Mise à jour / Rendu
 function animation() {
     // Récupére l'objet le plus proche
     raycaster.setFromCamera(pointeur, camera);
     const intersections = raycaster.intersectObjects( scene.children );
-    if (intersections.length > 0) {
-        let distance = Number.MAX_VALUE;
-        for (const objet of intersections) {
-            if (objet.distance < distance) {
-                objetVise = objet
-                distance = objet.distance
-            }
-        }
-    } else {
-        objetVise = undefined
+    objetVise = intersections.length ? intersections[0] : undefined
+
+    if (objetClique) {
+        console.log(data.value.z);
+        const x = objetClique.object.position.x + data.value.x;
+        const y = objetClique.object.position.y + data.value.y;
+        const z = objetClique.object.position.z + data.value.z;
+
+        axesHelper.position.set(x, y, z);
     }
 
     // Permet de naviguer dans la scene
@@ -96,8 +125,6 @@ function mouvement_pointeur() {
     if (!canvas.value) return;
 	pointeur.x = (x.value / canvas.value.clientWidth ) * 2 - 1;
 	pointeur.y = - ( y.value / canvas.value.clientHeight ) * 2 + 1;
-
-    console.log(pointeur);
 }
 
 watch(x, mouvement_pointeur);
@@ -107,11 +134,8 @@ watch(y, mouvement_pointeur);
 watch(pressure, () => {
     if (pressure.value <= 0) return;
 
-    if (objetVise) {
-        if (objetVise.object.name == "Bureau") {
-            lampe.position.set(objetVise.point.x, objetVise.point.y + (-80), objetVise.point.z);
-        }
-    }
+    // Mettre ici les interactions
+    objetClique = objetVise
 })
 
 // Mise à jour du canvas à la modification de la taille de la fenêtre.
@@ -120,8 +144,6 @@ watch(ratio, () => {
 
     camera.aspect = ratio.value;
     camera.updateProjectionMatrix();
-
-    console.log(`Width: ${canvas.value?.clientWidth} Height: ${canvas.value?.clientHeight}`)
 })
 </script>
 
