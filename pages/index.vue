@@ -1,58 +1,39 @@
 <script setup lang="ts">
-import Visu from '~/components/visu.vue';
-import { useBroadcastChannel } from '#imports';
-
-const XAx: Ref<number> = ref(0);
-const YAx: Ref<number> = ref(0);
-const ZAx: Ref<number> = ref(0);
-
-// Prépare le système de message vers le parent.
-const {
-  post,
-} = useBroadcastChannel<void, { x: number, y: number, z: number}>({ name: '3D' })
-
-
-function envoyerSurScene() {
-    const message = {
-        x: XAx.value,
-        y: YAx.value,
-        z: ZAx.value,
-    };
-
-    post(message);
-}
-
-watch(XAx, envoyerSurScene);
-watch(YAx, envoyerSurScene);
-watch(ZAx, envoyerSurScene);
+const M1 = ref(0);
+const M2 = ref(0);
+const M3 = ref(0);
+const M4 = ref(0);
 </script>
 
 <template>
     <div class="flex flex-row h-full">
         <div class="basis-2/3 h-full" style="position: relative;">
-            <Visu />
+            <Visu :m1="M1" :m2="M2" :m3="M3" :m4="M4"/>
         </div>
         <div class="basis-1/3 h-full">
             <div class="row p-4">
-                <label for="X" class="block mb-2 text-sm font-medium text-gray-900 text-white">X:</label>
-                <input v-model="XAx" id="X" type="range" value="50" min="0" max="2000" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                <h1 class="text-white text-xl">Pilotage manuel</h1>
 
-                <label for="Y" class="block mb-2 text-sm font-medium text-gray-900 text-white">Y:</label>
-                <input v-model="YAx" id="Y" type="range" value="50" min="0" max="2000" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                <label class="block mb-2 text-sm font-medium text-gray-900 text-white">
+                    M1
+                    <input v-model.number="M1" type="range" value="0" min="-180" max="180" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                </label>
 
-                <label for="Z" class="block mb-2 text-sm font-medium text-gray-900 text-white">Z:</label>
-                <input v-model="ZAx" id="Z" type="range" value="50" min="0" max="2000" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                <label class="block mb-2 text-sm font-medium text-gray-900 text-white">
+                    M2
+                    <input v-model.number="M2" type="range" value="0" min="-180" max="180" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                </label>
+
+                <label class="block mb-2 text-sm font-medium text-gray-900 text-white">
+                    M3
+                    <input v-model.number="M3" type="range" value="0" min="-180" max="180" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                </label>
+            
+                <label class="block mb-2 text-sm font-medium text-gray-900 text-white">
+                    M4
+                    <input v-model.number="M4" type="range" value="0" min="-180" max="180" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"> 
+                </label>
             </div>
         </div>
     </div>
 </template>
-
-<style>
-#visualisation {
-    display: block;
-    position: relative;
-    width: 500px;
-    height: 500px;
-    background-color: black;
-}
-</style>

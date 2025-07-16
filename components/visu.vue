@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import * as THREE from 'three';
-import { objectPick, usePointer } from '@vueuse/core'
-import { useBroadcastChannel } from '@vueuse/core';
+import { usePointer } from '@vueuse/core'
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import type { Ref } from 'vue';
 
-// Prépare le système de message vers le parent.
-const {
-  data,
-} = useBroadcastChannel<{ x: number, y: number, z: number}, void>({ name: '3D' })
+const { m1, m2, m3, m4 } = defineProps<{
+    m1: number,
+    m2: number,
+    m3: number,
+    m4: number,
+}>();
 
 // Référence
-const canvas : Ref<HTMLCanvasElement | undefined> = ref(undefined);
+const canvas = useTemplateRef("canvas");
 
 // Gestion de la souris.
 const { x, y, pressure } = usePointer({
@@ -24,15 +24,28 @@ const ratio = computed(() => { return canvas.value ? (canvas.value.clientWidth /
 // Préparation des éléments de ThreeJS.
 const loader = new FBXLoader();
 const scene = new THREE.Scene();
-let renderer : THREE.WebGLRenderer | undefined = undefined;
-let controleOrbite : OrbitControls | undefined = undefined;
+const renderer = shallowRef<THREE.WebGLRenderer | undefined>();
+const controleOrbite = shallowRef<OrbitControls | undefined>();
 
-// Chargement des modèles
+
+// Debug
+const axesHelper = new THREE.AxesHelper( 50 );
+scene.add(axesHelper);
+
+// Chargement du modèle
 const lampe = await loader.loadAsync("lampe.fbx");
-
-console.log(lampe);
-
 const [ support, bras1, bras2, cone, brashorizontal ] = lampe.children;
+
+// Récupére les coordonnées réel pour calcul des deltas.
+const conePos = new THREE.Vector3(0, 0, 0);
+const bras1Pos = new THREE.Vector3(0, 0, 0);
+const bras2Pos = new THREE.Vector3(0, 0, 0);
+const brashorizontalPos = new THREE.Vector3(0, 0, 0);
+
+cone.getWorldPosition(conePos);
+bras1.getWorldPosition(bras1Pos);
+bras2.getWorldPosition(bras2Pos);
+brashorizontal.getWorldPosition(brashorizontalPos);
 
 // Préparation des groupes et point spécifique pour la lampe en fonction des moteurs.
 const groupe_M1 = new THREE.Group();
@@ -41,15 +54,57 @@ const groupe_M3 = new THREE.Group();
 const groupe_M4 = new THREE.Group();
 const groupe_Lampe = new THREE.Group();
 
-groupe_M4.add(cone);
-groupe_M3.add(bras2, groupe_M4);
-groupe_M2.add(bras1, groupe_M3);
-groupe_M1.add(brashorizontal, groupe_M2);
 groupe_Lampe.add(support, groupe_M1);
+groupe_Lampe.position.set(0, 0, 0);
 
-const axesHelper = new THREE.AxesHelper( 100 );
-axesHelper.position.set(groupe_M4.position.x, groupe_M4.position.y, groupe_M4.position.z);
-scene.add( axesHelper );
+groupe_M1.add(brashorizontal, groupe_M2);
+groupe_M1.position.set(brashorizontalPos.x, brashorizontalPos.y, brashorizontalPos.z);
+
+groupe_M2.add(bras1, groupe_M3);
+groupe_M2.position.set(bras1Pos.x - brashorizontalPos.x, bras1Pos.y - brashorizontalPos.y, bras1Pos.z - brashorizontalPos.z);
+
+groupe_M3.add(bras2, groupe_M4);
+groupe_M3.position.set(bras2Pos.x - bras1Pos.x, bras2Pos.y - bras1Pos.y, bras2Pos.z - bras1Pos.z);
+
+groupe_M4.add(cone);
+groupe_M4.position.set(conePos.x - bras2Pos.x, conePos.y - bras2Pos.y, conePos.z - bras2Pos.z);
+
+cone.position.set(0,0,0);
+bras2.position.set(0,0,0);
+bras1.position.set(0,0,0);
+brashorizontal.position.set(0,0,0);
+support.position.set(0,0,0);
+
+groupe_Lampe.rotateX(-Math.PI / 2);
+
+// Mise à jour des angles.
+watchDebounced(() => m1, (v) => {
+    groupe_M1.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), (v * (Math.PI/180)));
+}, {
+    debounce: 10
+})
+
+watchDebounced(() => m2, (v) => {
+    const rad = ((Math.PI*2) * (v/100))
+    groupe_M2.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (v * (Math.PI/180)));
+}, {
+    debounce: 10
+})
+
+watchDebounced(() => m3, (v) => {
+    const rad = ((Math.PI*2) * (v/100))
+    groupe_M3.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (v * (Math.PI/180)));
+}, {
+    debounce: 10
+})
+
+watchDebounced(() => m4, (v) => {
+    const rad = ((Math.PI*2) * (v/100))
+    groupe_M4.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (v * (Math.PI/180)));
+}, {
+    debounce: 10
+})
+
 
 // Préparation de la caméra.
 const camera = new THREE.PerspectiveCamera( 75, ratio.value, 100, 5000 );
@@ -76,11 +131,9 @@ gridHelper.scale.set(100, 100, 100);
 scene.add( gridHelper );
 
 // Paramètrage de la scène
-scene.background = new THREE.Color('#1F2640');
+scene.background = new THREE.Color('#F6E6B1');
 
 // Affichage de la lampe
-groupe_Lampe.rotateX(-Math.PI / 2);
-groupe_Lampe.position.set(0, -50, 0);
 scene.add(groupe_Lampe);
 
 // Mise à jour / Rendu
@@ -91,44 +144,44 @@ function animation() {
     objetVise = intersections.length ? intersections[0] : undefined
 
     if (objetClique) {
-        console.log(data.value.z);
-        const x = objetClique.object.position.x + data.value.x;
-        const y = objetClique.object.position.y + data.value.y;
-        const z = objetClique.object.position.z + data.value.z;
+        const origine = new THREE.Vector3(0, 0, 0);
+        objetClique.object.getWorldPosition(origine);
+
+        const x = origine.x;
+        const y = origine.y;
+        const z = origine.z;
 
         axesHelper.position.set(x, y, z);
     }
 
     // Permet de naviguer dans la scene
-    controleOrbite?.update();
+    controleOrbite.value?.update();
 
     // Rendu de l'image
-    renderer?.render(scene, camera);
+    renderer.value?.render(scene, camera);
 }
 
-// Lorsque le canvas est disponible, activer le rendu.
-watch(canvas, () => {
+// Lorsque le DOM est disponible, activer le rendu de la scène 3D.
+onMounted(() => {
     if (!canvas.value) return;
 
-    renderer = new THREE.WebGLRenderer({
-        canvas: canvas.value
+    renderer.value = new THREE.WebGLRenderer({
+        canvas: canvas.value,
+        antialias: true,
     });
 
-    renderer?.setSize(canvas.value.clientWidth, canvas.value.clientHeight, false);
-    controleOrbite = new OrbitControls( camera, renderer.domElement );
+    renderer.value?.setSize(canvas.value.clientWidth, canvas.value.clientHeight, false);
+    controleOrbite.value = new OrbitControls( camera, renderer.value.domElement );
 
-    renderer.setAnimationLoop(animation);
+    renderer.value.setAnimationLoop(animation);
 });
 
 // Mise à jour du pointeur "2D" via les mouvements de souris
-function mouvement_pointeur() {
+watch([x, y], () => {
     if (!canvas.value) return;
 	pointeur.x = (x.value / canvas.value.clientWidth ) * 2 - 1;
 	pointeur.y = - ( y.value / canvas.value.clientHeight ) * 2 + 1;
-}
-
-watch(x, mouvement_pointeur);
-watch(y, mouvement_pointeur);
+});
 
 // Vérifie sur quel objet l'utilisateur a cliqué.
 watch(pressure, () => {
@@ -140,7 +193,7 @@ watch(pressure, () => {
 
 // Mise à jour du canvas à la modification de la taille de la fenêtre.
 watch(ratio, () => {
-    if (canvas.value) renderer?.setSize(canvas.value.clientWidth, canvas.value.clientHeight, false);
+    if (canvas.value) renderer.value?.setSize(canvas.value.clientWidth, canvas.value.clientHeight, false);
 
     camera.aspect = ratio.value;
     camera.updateProjectionMatrix();
