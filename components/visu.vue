@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { usePointer } from '@vueuse/core'
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { cinematique } from '#imports';
 
 const { m1, m2, m3, m4 } = defineProps<{
     m1: number,
@@ -27,9 +28,8 @@ const scene = new THREE.Scene();
 const renderer = shallowRef<THREE.WebGLRenderer | undefined>();
 const controleOrbite = shallowRef<OrbitControls | undefined>();
 
-
 // Debug
-const axesHelper = new THREE.AxesHelper( 50 );
+const axesHelper = new THREE.AxesHelper( 200 );
 scene.add(axesHelper);
 
 // Chargement du modèle
@@ -76,6 +76,7 @@ brashorizontal.position.set(0,0,0);
 support.position.set(0,0,0);
 
 groupe_Lampe.rotateX(-Math.PI / 2);
+groupe_M1.position.set(0,0,0);
 
 // Mise à jour des angles.
 watchDebounced(() => m1, (v) => {
@@ -136,12 +137,39 @@ scene.background = new THREE.Color('#F6E6B1');
 // Affichage de la lampe
 scene.add(groupe_Lampe);
 
+// Repère cinématique
+const geometry = new THREE.SphereGeometry( 30, 32, 16 ); 
+const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } ); 
+const target = new THREE.Mesh( geometry.clone(), material.clone() );
+target.position.set(100, 300, 0);
+scene.add( target );
+
+let avar1 = 5;
+let avar2 = 5;
+
 // Mise à jour / Rendu
 function animation() {
     // Récupére l'objet le plus proche
     raycaster.setFromCamera(pointeur, camera);
     const intersections = raycaster.intersectObjects( scene.children );
     objetVise = intersections.length ? intersections[0] : undefined
+
+    target.position.z += avar1;
+    if (target.position.z > 400 || target.position.z < -400) {
+        avar1 = -avar1;
+    }
+
+    // target.position.y += avar2;
+    // if (target.position.y > 500 || target.position.y < 400) {
+    //     avar2 = -avar2;
+    // }
+
+    // const position = cinematique({ m1, m2, m3 });
+    const { m1, m2, m3 } = cinematiqueInverse(target.position);
+    console.log(m1);
+    groupe_M1.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), (-m1 * (Math.PI/180)));
+    groupe_M2.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (m2 * (Math.PI/180)));
+    groupe_M3.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (m3 * (Math.PI/180)));
 
     if (objetClique) {
         const origine = new THREE.Vector3(0, 0, 0);
