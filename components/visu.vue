@@ -5,11 +5,14 @@ import { FBXLoader } from 'three/addons/loaders/FBXLoader.js'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { cinematique } from '#imports';
 
-const { m1, m2, m3, m4 } = defineProps<{
-    m1: number,
-    m2: number,
-    m3: number,
-    m4: number,
+const props = defineProps<{
+    x: number,
+    y: number,
+    z: number,
+}>();
+
+const emit = defineEmits<{
+    definirErreur: [texte: string]
 }>();
 
 // Référence
@@ -76,36 +79,6 @@ brashorizontal.position.set(0,0,0);
 support.position.set(0,0,0);
 
 groupe_Lampe.rotateX(-Math.PI / 2);
-groupe_M1.position.set(0,0,0);
-
-// Mise à jour des angles.
-watchDebounced(() => m1, (v) => {
-    groupe_M1.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), (v * (Math.PI/180)));
-}, {
-    debounce: 10
-})
-
-watchDebounced(() => m2, (v) => {
-    const rad = ((Math.PI*2) * (v/100))
-    groupe_M2.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (v * (Math.PI/180)));
-}, {
-    debounce: 10
-})
-
-watchDebounced(() => m3, (v) => {
-    const rad = ((Math.PI*2) * (v/100))
-    groupe_M3.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (v * (Math.PI/180)));
-}, {
-    debounce: 10
-})
-
-watchDebounced(() => m4, (v) => {
-    const rad = ((Math.PI*2) * (v/100))
-    groupe_M4.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (v * (Math.PI/180)));
-}, {
-    debounce: 10
-})
-
 
 // Préparation de la caméra.
 const camera = new THREE.PerspectiveCamera( 75, ratio.value, 100, 5000 );
@@ -129,6 +102,7 @@ scene.add(light);
 // Ajout de la grille
 const gridHelper = new THREE.GridHelper( 20, 20 );
 gridHelper.scale.set(100, 100, 100);
+gridHelper.position.set(0, 0, 0);
 scene.add( gridHelper );
 
 // Paramètrage de la scène
@@ -138,14 +112,43 @@ scene.background = new THREE.Color('#F6E6B1');
 scene.add(groupe_Lampe);
 
 // Repère cinématique
+const offset = new THREE.Vector3(0,0,0);
+groupe_M1.getWorldPosition(offset);
+const targetPos = reactive(new THREE.Vector3(0, 0, 0))
 const geometry = new THREE.SphereGeometry( 30, 32, 16 ); 
 const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } ); 
 const target = new THREE.Mesh( geometry.clone(), material.clone() );
-target.position.set(100, 300, 0);
+target.position.set(offset.x, offset.y, offset.z);
 scene.add( target );
 
-let avar1 = 5;
-let avar2 = 5;
+// Mise à jour positionnel de la visée
+watch(() => props.x, (x) => {
+    targetPos.setX(x)
+})
+
+watch(() => props.y, (y) => {
+    targetPos.setY(y)
+})
+
+watch(() => props.z, (z) => {
+    targetPos.setZ(z)
+})
+
+
+watch(targetPos, () => {
+    target.position.set(targetPos.x + offset.x, targetPos.y + offset.y, targetPos.z + offset.z);
+    try {
+        const { m1, m2, m3 } = cinematiqueInverse(targetPos);
+        groupe_M1.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), (-m1 * (Math.PI/180)));
+        groupe_M2.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (m2 * (Math.PI/180)));
+        groupe_M3.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (m3 * (Math.PI/180)));
+        emit('definirErreur', '');
+    } catch (err) {
+        console.error(err as string)
+        emit('definirErreur', err as string);
+    }
+})
+
 
 // Mise à jour / Rendu
 function animation() {
@@ -153,34 +156,6 @@ function animation() {
     raycaster.setFromCamera(pointeur, camera);
     const intersections = raycaster.intersectObjects( scene.children );
     objetVise = intersections.length ? intersections[0] : undefined
-
-    target.position.z += avar1;
-    if (target.position.z > 400 || target.position.z < -400) {
-        avar1 = -avar1;
-    }
-
-    // target.position.y += avar2;
-    // if (target.position.y > 500 || target.position.y < 400) {
-    //     avar2 = -avar2;
-    // }
-
-    // const position = cinematique({ m1, m2, m3 });
-    const { m1, m2, m3 } = cinematiqueInverse(target.position);
-    console.log(m1);
-    groupe_M1.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), (-m1 * (Math.PI/180)));
-    groupe_M2.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (m2 * (Math.PI/180)));
-    groupe_M3.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (m3 * (Math.PI/180)));
-
-    if (objetClique) {
-        const origine = new THREE.Vector3(0, 0, 0);
-        objetClique.object.getWorldPosition(origine);
-
-        const x = origine.x;
-        const y = origine.y;
-        const z = origine.z;
-
-        axesHelper.position.set(x, y, z);
-    }
 
     // Permet de naviguer dans la scene
     controleOrbite.value?.update();

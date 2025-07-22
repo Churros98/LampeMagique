@@ -6,6 +6,7 @@ import type { mat3 } from 'three/src/nodes/TSL.js';
 // Attention : 1 point = 1mm réel.
 //
 
+// Permet de récupérer une position dans l'espace à partir des angles.
 export function cinematique(angles: {
     m1: number,
     m2: number,
@@ -52,6 +53,9 @@ export function cinematique(angles: {
 
     return finalPosition;
 }
+
+// Permet de récupérer les angles à partir d'une position dans l'espace 
+// En grade partie généré par ChatGPT via la fonction de cinématique. Je ne maitrise pas vraiment les éléments mathématique pour la cinématique inverse.
 export function cinematiqueInverse(position: THREE.Vector3): {
     m1: number,
     m2: number,
@@ -61,14 +65,24 @@ export function cinematiqueInverse(position: THREE.Vector3): {
     const brasL = 320;
     const correction = THREE.MathUtils.degToRad(95.36);
 
-    const constraints = {
-        m1: { min: -180, max: 180 },
-        m2: { min: -180, max: 180 },
-        m3: { min: -180, max: 180 }
-    };
-
     function clampAngle(angle: number, min: number, max: number): number {
         return Math.max(min, Math.min(angle, max));
+    }
+
+    // Contrainte mécanique (collision avec le bras lui même / passage de câble)
+    const constraints = {
+        m1: {
+            min: -70,
+            max: 70
+        },
+        m2: {
+            min: -180,
+            max: 180
+        },
+        m3: {
+            min: -200,
+            max: 110
+        },
     }
 
     // Étape 1 : angle M1 (rotation horizontale)
@@ -80,8 +94,8 @@ export function cinematiqueInverse(position: THREE.Vector3): {
     const d = localTarget.length();
 
     // Vérification de la portée
-    if (d > 3 * brasL) {
-        throw new Error("Position hors de portée du bras.");
+    if (d > (2 * brasL) + 200) {
+        throw "Position hors de portée du bras.";
     }
 
     const angleToTarget = Math.atan2(localTarget.y, localTarget.x);
@@ -104,9 +118,9 @@ export function cinematiqueInverse(position: THREE.Vector3): {
         const m1Deg = THREE.MathUtils.radToDeg(m1Rad);
 
         if (
-            m1Deg >= constraints.m1.min && m1Deg <= constraints.m1.max &&
-            m2Deg >= constraints.m2.min && m2Deg <= constraints.m2.max &&
-            m3Deg >= constraints.m3.min && m3Deg <= constraints.m3.max
+            m1Deg < constraints.m1.max && m1Deg > constraints.m1.min &&
+            m2Deg < constraints.m2.max && m2Deg > constraints.m2.min &&
+            m3Deg < constraints.m3.max && m3Deg > constraints.m3.min
         ) {
             solutions.push({ m1: m1Deg, m2: m2Deg, m3: m3Deg });
         }
@@ -125,9 +139,9 @@ export function cinematiqueInverse(position: THREE.Vector3): {
         const m1Deg = THREE.MathUtils.radToDeg(m1Rad);
 
         if (
-            m1Deg >= constraints.m1.min && m1Deg <= constraints.m1.max &&
-            m2Deg >= constraints.m2.min && m2Deg <= constraints.m2.max &&
-            m3Deg >= constraints.m3.min && m3Deg <= constraints.m3.max
+            m1Deg < constraints.m1.max && m1Deg > constraints.m1.min &&
+            m2Deg < constraints.m2.max && m2Deg > constraints.m2.min &&
+            m3Deg < constraints.m3.max && m3Deg > constraints.m3.min
         ) {
             solutions.push({ m1: m1Deg, m2: m2Deg, m3: m3Deg });
         }
@@ -135,10 +149,9 @@ export function cinematiqueInverse(position: THREE.Vector3): {
 
     // Choix de la solution
     if (solutions.length === 0) {
-        //throw new Error("Aucune configuration ne respecte les contraintes.");
-        return { m1: 0, m2: 0, m3: 0}
+        throw "Impossible de respecter les contrainte";
     }
 
-    // Retourner la première solution valide (tu peux affiner ce choix)
+    // Retourner la première solution valide
     return solutions[0];
 }
