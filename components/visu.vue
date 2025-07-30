@@ -3,16 +3,15 @@ import * as THREE from 'three';
 import { usePointer } from '@vueuse/core'
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { cinematique } from '#imports';
 
 const props = defineProps<{
-    x: number,
-    y: number,
-    z: number,
-}>();
-
-const emit = defineEmits<{
-    definirErreur: [texte: string]
+    targetX: number,
+    targetY: number,
+    targetZ: number,
+    angleM1: number,
+    angleM2: number,
+    angleM3: number,
+    angleM4: number,
 }>();
 
 // Référence
@@ -55,10 +54,10 @@ const groupe_M1 = new THREE.Group();
 const groupe_M2 = new THREE.Group();
 const groupe_M3 = new THREE.Group();
 const groupe_M4 = new THREE.Group();
-const groupe_Lampe = new THREE.Group();
+const groupe_LampeDirect = new THREE.Group();
 
-groupe_Lampe.add(support, groupe_M1);
-groupe_Lampe.position.set(0, 0, 0);
+groupe_LampeDirect.add(support, groupe_M1);
+groupe_LampeDirect.position.set(0, 0, 0);
 
 groupe_M1.add(brashorizontal, groupe_M2);
 groupe_M1.position.set(brashorizontalPos.x, brashorizontalPos.y, brashorizontalPos.z);
@@ -78,7 +77,7 @@ bras1.position.set(0,0,0);
 brashorizontal.position.set(0,0,0);
 support.position.set(0,0,0);
 
-groupe_Lampe.rotateX(-Math.PI / 2);
+groupe_LampeDirect.rotateX(-Math.PI / 2);
 
 // Préparation de la caméra.
 const camera = new THREE.PerspectiveCamera( 75, ratio.value, 100, 5000 );
@@ -108,8 +107,8 @@ scene.add( gridHelper );
 // Paramètrage de la scène
 scene.background = new THREE.Color('#F6E6B1');
 
-// Affichage de la lampe
-scene.add(groupe_Lampe);
+// Affichage des lampes
+scene.add(groupe_LampeDirect);
 
 // Repère cinématique
 const offset = new THREE.Vector3(0,0,0);
@@ -122,33 +121,38 @@ target.position.set(offset.x, offset.y, offset.z);
 scene.add( target );
 
 // Mise à jour positionnel de la visée
-watch(() => props.x, (x) => {
+watch(() => props.targetX, (x) => {
     targetPos.setX(x)
 })
 
-watch(() => props.y, (y) => {
+watch(() => props.targetY, (y) => {
     targetPos.setY(y)
 })
 
-watch(() => props.z, (z) => {
+watch(() => props.targetZ, (z) => {
     targetPos.setZ(z)
 })
 
-
 watch(targetPos, () => {
     target.position.set(targetPos.x + offset.x, targetPos.y + offset.y, targetPos.z + offset.z);
-    try {
-        const { m1, m2, m3 } = cinematiqueInverse(targetPos);
-        groupe_M1.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), (-m1 * (Math.PI/180)));
-        groupe_M2.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (m2 * (Math.PI/180)));
-        groupe_M3.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (m3 * (Math.PI/180)));
-        emit('definirErreur', '');
-    } catch (err) {
-        console.error(err as string)
-        emit('definirErreur', err as string);
-    }
 })
 
+// Mise à jour des angles moteurs
+watch(() => props.angleM1, (m1) => {
+    groupe_M1.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), (-m1 * (Math.PI/180)));
+})
+
+watch(() => props.angleM2, (m2) => {
+    groupe_M2.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (m2 * (Math.PI/180)));
+})
+
+watch(() => props.angleM3, (m3) => {
+    groupe_M3.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (m3 * (Math.PI/180)));
+})
+
+watch(() => props.angleM4, (m4) => {
+    groupe_M4.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (m4 * (Math.PI/180)));
+})
 
 // Mise à jour / Rendu
 function animation() {

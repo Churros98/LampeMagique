@@ -1,6 +1,33 @@
 import * as THREE from 'three';
-import { FBXLoader } from 'three/examples/jsm/Addons.js';
-import type { mat3 } from 'three/src/nodes/TSL.js';
+import type { Contraintes } from './messages';
+
+// Contrainte mécanique
+let contraintes: Contraintes = {
+    m1: {
+        min: 0,
+        max: 0
+    },
+    m2: {
+        min: 0,
+        max: 0
+    },
+    m3: {
+        min: 0,
+        max: 0
+    },
+    m4: {
+        min: 0,
+        max: 0
+    } 
+}
+
+export function definirContraintes(c: Contraintes) {
+    contraintes = c;
+}
+
+export function recupererContraintes() {
+    return contraintes
+}
 
 //
 // Attention : 1 point = 1mm réel.
@@ -65,26 +92,6 @@ export function cinematiqueInverse(position: THREE.Vector3): {
     const brasL = 320;
     const correction = THREE.MathUtils.degToRad(95.36);
 
-    function clampAngle(angle: number, min: number, max: number): number {
-        return Math.max(min, Math.min(angle, max));
-    }
-
-    // Contrainte mécanique (collision avec le bras lui même / passage de câble)
-    const constraints = {
-        m1: {
-            min: -70,
-            max: 70
-        },
-        m2: {
-            min: -180,
-            max: 180
-        },
-        m3: {
-            min: -200,
-            max: 110
-        },
-    }
-
     // Étape 1 : angle M1 (rotation horizontale)
     const m1Rad = Math.atan2(position.z, position.x);
 
@@ -117,10 +124,14 @@ export function cinematiqueInverse(position: THREE.Vector3): {
         const m3Deg = -THREE.MathUtils.radToDeg(m3Rad);
         const m1Deg = THREE.MathUtils.radToDeg(m1Rad);
 
+        console.log('Solution 1:');
+        console.log({ m1: m1Deg, m2: m2Deg, m3: m3Deg });
+        console.log(contraintes);
+
         if (
-            m1Deg < constraints.m1.max && m1Deg > constraints.m1.min &&
-            m2Deg < constraints.m2.max && m2Deg > constraints.m2.min &&
-            m3Deg < constraints.m3.max && m3Deg > constraints.m3.min
+            m1Deg < contraintes.m1.max && m1Deg > contraintes.m1.min &&
+            m2Deg < contraintes.m2.max && m2Deg > contraintes.m2.min &&
+            m3Deg < contraintes.m3.max && m3Deg > contraintes.m3.min
         ) {
             solutions.push({ m1: m1Deg, m2: m2Deg, m3: m3Deg });
         }
@@ -138,10 +149,14 @@ export function cinematiqueInverse(position: THREE.Vector3): {
         const m3Deg = -THREE.MathUtils.radToDeg(m3Rad);
         const m1Deg = THREE.MathUtils.radToDeg(m1Rad);
 
+        console.log('Solution 2:');
+        console.log({ m1: m1Deg, m2: m2Deg, m3: m3Deg });
+        console.log(contraintes);
+
         if (
-            m1Deg < constraints.m1.max && m1Deg > constraints.m1.min &&
-            m2Deg < constraints.m2.max && m2Deg > constraints.m2.min &&
-            m3Deg < constraints.m3.max && m3Deg > constraints.m3.min
+            m1Deg < contraintes.m1.max && m1Deg > contraintes.m1.min &&
+            m2Deg < contraintes.m2.max && m2Deg > contraintes.m2.min &&
+            m3Deg < contraintes.m3.max && m3Deg > contraintes.m3.min
         ) {
             solutions.push({ m1: m1Deg, m2: m2Deg, m3: m3Deg });
         }
@@ -149,7 +164,7 @@ export function cinematiqueInverse(position: THREE.Vector3): {
 
     // Choix de la solution
     if (solutions.length === 0) {
-        throw "Impossible de respecter les contrainte";
+        throw "Aucune solution pour atteindre la position.";
     }
 
     // Retourner la première solution valide
