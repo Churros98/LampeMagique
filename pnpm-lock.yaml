@@ -23,12 +23,18 @@ importers:
       three:
         specifier: ^0.178.0
         version: 0.178.0
+      urdf-loader:
+        specifier: ^0.12.6
+        version: 0.12.6(three@0.178.0)
       vue:
         specifier: ^3.5.17
         version: 3.5.17(typescript@5.8.3)
       vue-router:
         specifier: ^4.5.1
         version: 4.5.1(vue@3.5.17(typescript@5.8.3))
+      xacro-parser:
+        specifier: ^0.3.10
+        version: 0.3.10
     devDependencies:
       '@eslint/js':
         specifier: ^9.31.0
@@ -2337,6 +2343,9 @@ packages:
     resolution: {integrity: sha512-VyhnebXciFV2DESc+p6B+y0LjSm0krU4OgJN44qFAhBY0TJ+1V61tYD2+wHusZ6F9n5K+vl8k0sTy7PEfV4qpg==}
     engines: {node: '>=16.17'}
 
+  expr-eval@2.0.2:
+    resolution: {integrity: sha512-4EMSHGOPSwAfBiibw3ndnP0AvjDWLsMvGOvWEZ2F96IGk0bIVdjQisOHxReSkE13mHcfbuCiXw+G4y0zv6N8Eg==}
+
   exsolve@1.0.7:
     resolution: {integrity: sha512-VO5fQUzZtI6C+vx4w/4BWJpg3s/5l+6pRQEHzFRM8WFi4XffSP1Z+4qi7GbjWbvRQEbdIco5mIMq+zX4rPuLrw==}
 
@@ -4360,6 +4369,11 @@ packages:
   uqr@0.1.2:
     resolution: {integrity: sha512-MJu7ypHq6QasgF5YRTjqscSzQp/W11zoUk6kvmlH+fmWEs63Y0Eib13hYFwAzagRJcVY8WVnlV+eBDUGMJ5IbA==}
 
+  urdf-loader@0.12.6:
+    resolution: {integrity: sha512-EwpgOCPe6Tep2+MXoo/r13keHaKQXMcM+4s9+jX0NRxNS/QSNuP5JPdk5AIgWEoEB43AkEj9Vk+Nr53NkXgSbA==}
+    peerDependencies:
+      three: '>=0.152.0'
+
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
 
@@ -4577,6 +4591,9 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
+
+  xacro-parser@0.3.10:
+    resolution: {integrity: sha512-/oxu1Zdib3eUbteNoLxyUt36tA4QapDPZ5zHSPlp6AasEWLise530+1knBYKw4kqXT2bKIQSh65uZPrrdJ67PQ==}
 
   xml-name-validator@4.0.0:
     resolution: {integrity: sha512-ICP2e+jsHvAj2E2lIHxa5tjXRlKDJo4IdvPvCXbXQGdzSfmSpNVyIKMvoZHjDY9DP0zV17iI85o90vRFXNccRw==}
@@ -7209,6 +7226,8 @@ snapshots:
       signal-exit: 4.1.0
       strip-final-newline: 3.0.0
 
+  expr-eval@2.0.2: {}
+
   exsolve@1.0.7: {}
 
   externality@1.0.2:
@@ -9456,6 +9475,10 @@ snapshots:
 
   uqr@0.1.2: {}
 
+  urdf-loader@0.12.6(three@0.178.0):
+    dependencies:
+      three: 0.178.0
+
   uri-js@4.4.1:
     dependencies:
       punycode: 2.3.1
@@ -9661,6 +9684,12 @@ snapshots:
       signal-exit: 4.1.0
 
   ws@8.18.3: {}
+
+  xacro-parser@0.3.10:
+    dependencies:
+      expr-eval: 2.0.2
+      yaml: 2.8.0
+      yargs: 17.7.2
 
   xml-name-validator@4.0.0: {}
 

@@ -1,0 +1,144 @@
+<?xml version="1.0" ?>
+<robot name="Bras" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<xacro:include filename="ros/Bras_description/urdf/materials.xacro" />
+<xacro:include filename="ros/Bras_description/urdf/Bras.trans" />
+<xacro:include filename="ros/Bras_description/urdf/Bras.gazebo" />
+<link name="base_link">
+  <inertial>
+    <origin xyz="0.050158918556482295 -0.0002191740013192163 0.07950424609411824" rpy="0 0 0"/>
+    <mass value="0.6653539960614809"/>
+    <inertia ixx="0.001908" iyy="0.003516" izz="0.002088" ixy="-6e-06" iyz="5e-06" ixz="-0.000887"/>
+  </inertial>
+  <visual>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="ros/Bras_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="ros/Bras_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="Bras_1">
+  <inertial>
+    <origin xyz="-0.009595668756159886 -2.951419174577704e-05 0.26276181202014853" rpy="0 0 0"/>
+    <mass value="0.4330005103518874"/>
+    <inertia ixx="0.004182" iyy="0.004157" izz="0.000187" ixy="0.0" iyz="0.0" ixz="0.000254"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.182398 0.001091 -0.113752" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="ros/Bras_description/meshes/Bras_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.182398 0.001091 -0.113752" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="ros/Bras_description/meshes/Bras_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="Bras_2">
+  <inertial>
+    <origin xyz="-0.009595237669895479 -2.9514191745908663e-05 0.2627623120309766" rpy="0 0 0"/>
+    <mass value="0.4330005103518874"/>
+    <inertia ixx="0.004182" iyy="0.004157" izz="0.000187" ixy="0.0" iyz="0.0" ixz="0.000254"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.153428 0.001091 -0.437895" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="ros/Bras_description/meshes/Bras_2.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.153428 0.001091 -0.437895" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="ros/Bras_description/meshes/Bras_2.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="Cone_1">
+  <inertial>
+    <origin xyz="-0.08215488302803256 -5.895168579244433e-06 -8.066010826590642e-06" rpy="0 0 0"/>
+    <mass value="0.15450970345685294"/>
+    <inertia ixx="0.000366" iyy="0.000339" izz="0.000342" ixy="-0.0" iyz="-0.0" ixz="-0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.124458 0.001091 -0.762039" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="ros/Bras_description/meshes/Cone_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.124458 0.001091 -0.762039" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="ros/Bras_description/meshes/Cone_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="BrasHorizontal_1">
+  <inertial>
+    <origin xyz="0.038916156548501515 -0.0006081419331074439 1.9674439080380468e-05" rpy="0 0 0"/>
+    <mass value="0.5658819361922761"/>
+    <inertia ixx="0.000151" iyy="0.000333" izz="0.000273" ixy="4e-06" iyz="0.0" ixz="-0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.11439 0.000157 -0.113558" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="ros/Bras_description/meshes/BrasHorizontal_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.11439 0.000157 -0.113558" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="ros/Bras_description/meshes/BrasHorizontal_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<joint name="Revolution 1" type="revolute">
+  <origin xyz="0.068008 -0.000934 0.000194" rpy="0 0 0"/>
+  <parent link="BrasHorizontal_1"/>
+  <child link="Bras_1"/>
+  <axis xyz="-0.0 1.0 0.0"/>
+  <limit upper="1.570796" lower="0.0" effort="100" velocity="100"/>
+</joint>
+
+<joint name="Revolution 2" type="revolute">
+  <origin xyz="-0.02897 0.0 0.324143" rpy="0 0 0"/>
+  <parent link="Bras_1"/>
+  <child link="Bras_2"/>
+  <axis xyz="0.0 -1.0 -0.0"/>
+  <limit upper="1.570796" lower="0.0" effort="100" velocity="100"/>
+</joint>
+
+<joint name="Revolution 3" type="revolute">
+  <origin xyz="-0.02897 0.0 0.324144" rpy="0 0 0"/>
+  <parent link="Bras_2"/>
+  <child link="Cone_1"/>
+  <axis xyz="-0.0 1.0 0.0"/>
+  <limit upper="1.047198" lower="-1.047198" effort="100" velocity="100"/>
+</joint>
+
+<joint name="Revolution 4" type="revolute">
+  <origin xyz="0.11439 -0.000157 0.113558" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="BrasHorizontal_1"/>
+  <axis xyz="-0.0 -0.0 1.0"/>
+  <limit upper="1.396263" lower="-1.396263" effort="100" velocity="100"/>
+</joint>
+
+</robot>

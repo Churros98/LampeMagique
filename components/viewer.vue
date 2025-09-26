@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import * as THREE from 'three';
+import URDFLoader from 'urdf-loader';
+import { XacroLoader } from 'xacro-parser';
+import type { URDFRobot } from 'urdf-loader';
 import { usePointer } from '@vueuse/core'
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import type { JointAngles } from '~/utils/messages';
 
 const props = defineProps<{
     targetX: number,
     targetY: number,
     targetZ: number,
-    angleM1: number,
-    angleM2: number,
-    angleM3: number,
-    angleM4: number,
+    jointAngles?: JointAngles[]
 }>();
 
 // Référence
@@ -25,7 +25,12 @@ const { x, y, pressure } = usePointer({
 const ratio = computed(() => { return canvas.value ? (canvas.value.clientWidth / canvas.value.clientHeight) : 1 })
 
 // Préparation des éléments de ThreeJS.
-const loader = new FBXLoader();
+const manager = new THREE.LoadingManager();
+const loader = new URDFLoader( manager );
+loader.packages = {
+    packageName : './ros'            // The equivalent of a (list of) ROS package(s):// directory
+};
+
 const scene = new THREE.Scene();
 const renderer = shallowRef<THREE.WebGLRenderer | undefined>();
 const controleOrbite = shallowRef<OrbitControls | undefined>();
@@ -33,51 +38,6 @@ const controleOrbite = shallowRef<OrbitControls | undefined>();
 // Debug
 const axesHelper = new THREE.AxesHelper( 200 );
 scene.add(axesHelper);
-
-// Chargement du modèle
-const lampe = await loader.loadAsync("lampe.fbx");
-const [ support, bras1, bras2, cone, brashorizontal ] = lampe.children;
-
-// Récupére les coordonnées réel pour calcul des deltas.
-const conePos = new THREE.Vector3(0, 0, 0);
-const bras1Pos = new THREE.Vector3(0, 0, 0);
-const bras2Pos = new THREE.Vector3(0, 0, 0);
-const brashorizontalPos = new THREE.Vector3(0, 0, 0);
-
-cone.getWorldPosition(conePos);
-bras1.getWorldPosition(bras1Pos);
-bras2.getWorldPosition(bras2Pos);
-brashorizontal.getWorldPosition(brashorizontalPos);
-
-// Préparation des groupes et point spécifique pour la lampe en fonction des moteurs.
-const groupe_M1 = new THREE.Group();
-const groupe_M2 = new THREE.Group();
-const groupe_M3 = new THREE.Group();
-const groupe_M4 = new THREE.Group();
-const groupe_LampeDirect = new THREE.Group();
-
-groupe_LampeDirect.add(support, groupe_M1);
-groupe_LampeDirect.position.set(0, 0, 0);
-
-groupe_M1.add(brashorizontal, groupe_M2);
-groupe_M1.position.set(brashorizontalPos.x, brashorizontalPos.y, brashorizontalPos.z);
-
-groupe_M2.add(bras1, groupe_M3);
-groupe_M2.position.set(bras1Pos.x - brashorizontalPos.x, bras1Pos.y - brashorizontalPos.y, bras1Pos.z - brashorizontalPos.z);
-
-groupe_M3.add(bras2, groupe_M4);
-groupe_M3.position.set(bras2Pos.x - bras1Pos.x, bras2Pos.y - bras1Pos.y, bras2Pos.z - bras1Pos.z);
-
-groupe_M4.add(cone);
-groupe_M4.position.set(conePos.x - bras2Pos.x, conePos.y - bras2Pos.y, conePos.z - bras2Pos.z);
-
-cone.position.set(0,0,0);
-bras2.position.set(0,0,0);
-bras1.position.set(0,0,0);
-brashorizontal.position.set(0,0,0);
-support.position.set(0,0,0);
-
-groupe_LampeDirect.rotateX(-Math.PI / 2);
 
 // Préparation de la caméra.
 const camera = new THREE.PerspectiveCamera( 75, ratio.value, 100, 5000 );
@@ -107,18 +67,29 @@ scene.add( gridHelper );
 // Paramètrage de la scène
 scene.background = new THREE.Color('#F6E6B1');
 
-// Affichage des lampes
-scene.add(groupe_LampeDirect);
-
 // Repère cinématique
 const offset = new THREE.Vector3(0,0,0);
-groupe_M1.getWorldPosition(offset);
 const targetPos = reactive(new THREE.Vector3(0, 0, 0))
 const geometry = new THREE.SphereGeometry( 30, 32, 16 ); 
 const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } ); 
 const target = new THREE.Mesh( geometry.clone(), material.clone() );
 target.position.set(offset.x, offset.y, offset.z);
 scene.add( target );
+
+// Ajout du robot
+const url = "./ros/Bras_description/urdf/Bras.xarco";
+const xacroLoader = new XacroLoader();
+xacroLoader.load(url, xml => {
+
+    const urdfLoader = new URDFLoader();
+    urdfLoader.workingPath = THREE.LoaderUtils.extractUrlBase( url );
+
+    const robot = urdfLoader.parse( xml );
+    scene.add( robot );
+
+}, err => {
+    console.error(err);
+});
 
 // Mise à jour positionnel de la visée
 watch(() => props.targetX, (x) => {
@@ -137,21 +108,10 @@ watch(targetPos, () => {
     target.position.set(targetPos.x + offset.x, targetPos.y + offset.y, targetPos.z + offset.z);
 })
 
-// Mise à jour des angles moteurs
-watch(() => props.angleM1, (m1) => {
-    groupe_M1.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), (-m1 * (Math.PI/180)));
-})
-
-watch(() => props.angleM2, (m2) => {
-    groupe_M2.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (m2 * (Math.PI/180)));
-})
-
-watch(() => props.angleM3, (m3) => {
-    groupe_M3.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (m3 * (Math.PI/180)));
-})
-
-watch(() => props.angleM4, (m4) => {
-    groupe_M4.setRotationFromAxisAngle(new THREE.Vector3(0, 1, 0), (m4 * (Math.PI/180)));
+watch(() => props.jointAngles, (angles) => {
+    angles?.forEach((name, angle) => {
+        // TODO : Rotate the joints
+    })
 })
 
 // Mise à jour / Rendu
