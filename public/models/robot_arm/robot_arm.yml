@@ -1,0 +1,27 @@
+name: "Bras Robot"
+model: "robot_arm.fbx"
+parts:
+  base_link1:
+    constraints:
+      min: -180
+      max: 180
+  Bras1:
+    id: 2
+    constraints:
+      min: -180
+      max: 180
+  Bras2:
+    id: 3
+    constraints:
+      min: -180
+      max: 180
+  Cone1:
+    id: 4
+    constraints:
+      min: -180
+      max: 180
+  BrasHorizontal1:
+    id: 1
+    constraints:
+      min: -180
+      max: 180

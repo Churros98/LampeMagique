@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Vector3 } from 'three';
-import type { Angle, Contrainte, EventMessage, JointAngles } from '~/utils/messages';
+import type { Angle, Contrainte, EventMessage, JointAngles } from '~/utils/robot.t';
 
 const targetX = ref(0);
 const targetY = ref(0);

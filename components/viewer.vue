@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import * as THREE from 'three';
-import URDFLoader from 'urdf-loader';
-import { XacroLoader } from 'xacro-parser';
-import type { URDFRobot } from 'urdf-loader';
-import { usePointer } from '@vueuse/core'
+import { usePointer } from '@vueuse/core';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import type { JointAngles } from '~/utils/messages';
+import { FBXLoader } from 'three/examples/jsm/Addons.js';
+
+import type { JointAngles } from '../utils/robot.t.ts'
+import { useRobot } from '~/composables/robot.js';
 
 const props = defineProps<{
     targetX: number,
@@ -24,12 +24,18 @@ const { x, y, pressure } = usePointer({
 
 const ratio = computed(() => { return canvas.value ? (canvas.value.clientWidth / canvas.value.clientHeight) : 1 })
 
-// Préparation des éléments de ThreeJS.
 const manager = new THREE.LoadingManager();
-const loader = new URDFLoader( manager );
-loader.packages = {
-    packageName : './ros'            // The equivalent of a (list of) ROS package(s):// directory
-};
+const loader = new FBXLoader(manager);
+loader.loadAsync('./models/robot_arm.fbx').then((robot_arm) => {
+    robot_arm.children.forEach((child) => {
+        console.log(`Name: ${child.name} Type: ${child.type}`);
+    });
+    scene.add(robot_arm);
+}).catch((err) => {
+    console.error(`Error loading FBX model: ${err}`);
+});
+
+const robot = useRobot("models/robot_arm/robot_arm.yml");
 
 const scene = new THREE.Scene();
 const renderer = shallowRef<THREE.WebGLRenderer | undefined>();
@@ -75,21 +81,6 @@ const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
 const target = new THREE.Mesh( geometry.clone(), material.clone() );
 target.position.set(offset.x, offset.y, offset.z);
 scene.add( target );
-
-// Ajout du robot
-const url = "./ros/Bras_description/urdf/Bras.xarco";
-const xacroLoader = new XacroLoader();
-xacroLoader.load(url, xml => {
-
-    const urdfLoader = new URDFLoader();
-    urdfLoader.workingPath = THREE.LoaderUtils.extractUrlBase( url );
-
-    const robot = urdfLoader.parse( xml );
-    scene.add( robot );
-
-}, err => {
-    console.error(err);
-});
 
 // Mise à jour positionnel de la visée
 watch(() => props.targetX, (x) => {
