@@ -1,0 +1,38 @@
+name: Bras Robot
+parts:
+  Bras1:
+    id: 2
+    constraint:
+      min: -180
+      max: 180
+    origin:
+      x: 0
+      y: 0
+      z: 0
+  Bras2:
+    id: 3
+    constraint:
+      min: -180
+      max: 180
+    origin:
+      x: 0
+      y: 0
+      z: 0
+  Cone1:
+    id: 4
+    constraint:
+      min: -180
+      max: 180
+    origin:
+      x: 0
+      y: 0
+      z: 0
+  BrasHorizontal1:
+    id: 1
+    constraint:
+      min: -180
+      max: 180
+    origin:
+      x: 0
+      y: 0
+      z: 0

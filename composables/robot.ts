@@ -1,35 +1,46 @@
-import { reactive } from 'vue'
+import type { Robot, RobotDescriptor } from '~/utils/robot.t'
+import * as THREE from 'three'
+
+import { FBXLoader } from 'three/examples/jsm/Addons.js'
+import { shallowRef } from 'vue'
+
 import { parse } from 'yaml'
+import { RobotDescriptorSchema } from '~/utils/robot.t'
 
-import { RobotDescriptor } from '~/utils/robot.t';
+const manager = new THREE.LoadingManager()
+const loader = new FBXLoader(manager)
 
-async function loadRobot(link: string): Promise<RobotDescriptor> {
-    console.log("Loading robot descriptor from", link)
-    return await fetch(link).then(async (response) => {
-        return await response.text().then((body) => {
-            const data = parse(body)
-            return RobotDescriptor.parse(data)
-        })
-    }).catch((error) => {
-        console.error("Unable to request robot file descriptor:", error)
-        throw error
+async function loadRobot(name: string): Promise<RobotDescriptor> {
+  return await fetch(`models/${name}/description.yml`).then(async (response) => {
+    return await response.text().then((body) => {
+      const data = parse(body)
+      return RobotDescriptorSchema.parse(data)
     })
+  }).catch((error) => {
+    throw error
+  })
 }
 
-export function useRobot(link: string) {
-    let robot = reactive<RobotDescriptor>({
-        name: "",
-        model: "",
-        parts: {}
-    })
+async function loadModel(name: string): Promise<THREE.Group> {
+  return await loader.loadAsync(`models/${name}/model.fbx`).then((model) => {
+    return model
+  }).catch((error) => {
+    throw error
+  })
+}
 
-    loadRobot(link).then((data) => {
-        robot = data
-        console.log("Robot descriptor loaded:", robot)
+export function useRobot(name: string) {
+  const robot = shallowRef<Robot | undefined>(undefined)
+
+  loadRobot(name).then(async (description) => {
+    await loadModel(name).then((model) => {
+      robot.value = { description, model } as Robot
     }).catch((error) => {
-        console.error("Error loading robot descriptor:", error)
-    });
+      throw error
+    })
+  }).catch((error) => {
+    throw error
+  })
 
-    console.log("Returning robot descriptor:", robot)
-    return { robot }
+  return { robot }
 }

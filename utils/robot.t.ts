@@ -1,41 +1,56 @@
-import { z } from 'zod';
+import { Group } from 'three'
+import { exp } from 'three/tsl'
+import { z } from 'zod'
 
-const Angle = z.object({
-    deg: z.number().min(-180).max(180),
-});
+const AngleSchema = z.object({
+  deg: z.number().min(-180).max(180),
+})
 
-const Constraint = z.object({
-    min: z.number().min(-180).max(180),
-    max: z.number().min(-180).max(180),
-}).refine((data) => data.min < data.max, {
-    message: "min must be less than max",
-});
+const PositionSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  z: z.number(),
+})
 
-const JointAngles = z.object({
-    name: z.string().min(1),
-    angle: Angle,
-});
+const ConstraintSchema = z.object({
+  min: z.number().min(-180).max(180),
+  max: z.number().min(-180).max(180),
+}).refine((data: z.infer<typeof ConstraintSchema>) => data.min < data.max, {
+  message: 'min must be less than max',
+})
+
+const _JointAnglesSchema = z.object({
+  name: z.string().min(1),
+  angle: AngleSchema,
+})
 
 const PartObj = z.object({
-    id: z.number().min(0),
-    constraint: Constraint,
-});
+  id: z.number().min(0).optional(),
+  constraint: ConstraintSchema,
+  origin: PositionSchema,
+})
 
-const Part = z.record(z.string(), PartObj);
+const Part = z.record(z.string(), PartObj)
 
-export const RobotDescriptor = z.object({
-    name: z.string().min(1),
-    model: z.string().min(1),
-    parts: Part,
-});
+export const RobotDescriptorSchema = z.object({
+  name: z.string().min(1),
+  parts: Part,
+})
 
-const EventMessage = z.object({
-    name: z.string().min(1),
-    data: z.union([Angle, Constraint]).optional(),
-});
+export const RobotSchema = z.object({
+  description: RobotDescriptorSchema,
+  model: Group,
+})
 
-export type RobotDescriptor = z.infer<typeof RobotDescriptor>;
-export type Angle = z.infer<typeof Angle>;
-export type Constraint = z.infer<typeof Constraint>;
-export type JointAngles = z.infer<typeof JointAngles>;
-export type EventMessage = z.infer<typeof EventMessage>;
+const _EventMessageSchema = z.object({
+  name: z.string().min(1),
+  data: z.union([AngleSchema, ConstraintSchema]).optional(),
+})
+
+export type RobotDescriptor = z.infer<typeof RobotDescriptorSchema>
+export type Angle = z.infer<typeof AngleSchema>
+export type Constraint = z.infer<typeof ConstraintSchema>
+export type JointAngles = z.infer<typeof _JointAnglesSchema>
+export type Position = z.infer<typeof PositionSchema>
+export type EventMessage = z.infer<typeof _EventMessageSchema>
+export type Robot = z.infer<typeof RobotSchema>
