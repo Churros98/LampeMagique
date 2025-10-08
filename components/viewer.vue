@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { JointAngles } from '../utils/robot.t.ts'
 import { usePointer } from '@vueuse/core'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
@@ -90,7 +89,9 @@ watch(targetPos, () => {
 
 // If model is loaded, add it to the scene
 watch(robot, (robot) => {
-  robot?.model && scene.add(robot.model)
+  if (robot?.model instanceof THREE.Object3D) {
+    scene.add(robot.model)
+  }
 })
 
 // Update joint angles

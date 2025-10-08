@@ -1,10 +1,26 @@
 name: Bras Robot
-parts:
+version: 1.0
+description: Description of a robotic arm with multiple joints.
+author: Sofiane
+joints:
+  base_link:
+    id: 0
+    is_root: true
+    constraint:
+      min: 0
+      max: 0
+    origin:
+      x: 0
+      y: 0
+    linked_to:
+      - BrasHorizontal1
   Bras1:
     id: 2
     constraint:
       min: -180
       max: 180
+    linked_to: 
+      - Bras2
     origin:
       x: 0
       y: 0
@@ -14,6 +30,8 @@ parts:
     constraint:
       min: -180
       max: 180
+    linked_to: 
+      - Cone1
     origin:
       x: 0
       y: 0
@@ -29,6 +47,8 @@ parts:
       z: 0
   BrasHorizontal1:
     id: 1
+    linked_to:
+      - Bras1
     constraint:
       min: -180
       max: 180
