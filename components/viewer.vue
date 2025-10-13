@@ -2,20 +2,24 @@
 import { usePointer } from '@vueuse/core'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
-import { useRobot } from '~/composables/robot.js'
+import { FBXLoader } from 'three/examples/jsm/Addons.js';
 
 const props = defineProps<{
   targetX: number
   targetY: number
   targetZ: number
-  jointAngles?: JointAngles[]
+  jointAngles: Map<string, Ref<Angle>>
 }>()
 
 // Référence
+const { robot } = useRobot()
 const canvas = useTemplateRef('canvas')
 const scene = new THREE.Scene()
+const loader = new FBXLoader()
 const renderer = shallowRef<THREE.WebGLRenderer | undefined>()
 const controleOrbite = shallowRef<OrbitControls | undefined>()
+
+let groupJoints = new Map<string, THREE.Group>()
 
 // Mouse / Pointer
 const { x, y, pressure } = usePointer({
@@ -26,15 +30,13 @@ const ratio = computed(() => {
   return canvas.value ? (canvas.value.clientWidth / canvas.value.clientHeight) : 1
 })
 
-// Load robot
-const { robot } = useRobot('robot_arm')
-
 // Debug
 const axesHelper = new THREE.AxesHelper(200)
 scene.add(axesHelper)
 
-// Préparation de la caméra.
+// Preparing camera
 const camera = new THREE.PerspectiveCamera(75, ratio.value, 100, 5000)
+camera.up.set( 0, 0, 1 )
 camera.position.set(0, 0, 1500)
 camera.rotateY(-Math.PI / 4)
 camera.rotateZ(-Math.PI / 4)
@@ -44,7 +46,7 @@ scene.add(camera)
 const pointer = new THREE.Vector2(0, 0)
 const raycaster = new THREE.Raycaster()
 let targetedObject: THREE.Intersection | undefined
-let _clickedObject: THREE.Intersection | undefined
+let clickedObject: THREE.Intersection | undefined
 
 // Adding light
 const color = 0xFFFFFF
@@ -56,6 +58,7 @@ scene.add(light)
 const gridHelper = new THREE.GridHelper(20, 20)
 gridHelper.scale.set(100, 100, 100)
 gridHelper.position.set(0, 0, 0)
+gridHelper.rotateX(Math.PI / 2)
 scene.add(gridHelper)
 
 // Setting background color
@@ -87,18 +90,82 @@ watch(targetPos, () => {
   target.position.set(targetPos.x + offset.x, targetPos.y + offset.y, targetPos.z + offset.z)
 })
 
-// If model is loaded, add it to the scene
-watch(robot, (robot) => {
-  if (robot?.model instanceof THREE.Object3D) {
-    scene.add(robot.model)
+// Recursive function to create the tree structure
+function deepTree(model: THREE.Object3D, groupMap: Map<string, THREE.Group>, joint: JointNode, offset: THREE.Vector3) {
+  // Check if the joint name is unique
+  if (groupMap.has(joint.name))
+    throw new Error(`Joint name "${joint.name}" is not unique (Circular Tree).`)
+
+  // Create a group for the joint
+  const parentGroup = new THREE.Group()
+  parentGroup.name = joint.name + '_group'
+  groupMap.set(joint.name, parentGroup)
+
+  // Set the position of the group using joint origin
+  parentGroup.position.set(joint.origin.x, joint.origin.y, joint.origin.z)
+  parentGroup.position.sub(offset)
+
+  // Create the offset
+  offset = new THREE.Vector3(joint.origin.x, joint.origin.y, joint.origin.z)
+
+  // Find the corresponding object in the model
+  const obj = model.getObjectByName(joint.name)
+  if (obj) {
+    obj.position.set(0,0,0)
+    parentGroup.add(obj)
+  } else {
+    throw new Error(`Joint name "${joint.name}" not found in the model.`)
   }
+
+  // Recursively add child joints
+  joint.joints.forEach((child) => {
+    const childGroup = deepTree(model, groupMap, child, offset)
+    parentGroup.add(childGroup)
+  })
+
+  return parentGroup
+}
+
+// Create a Three.JS Tree based on the robot.
+function createTree(robot: Robot, model: THREE.Object3D) {
+  const groupMap = new Map<string, THREE.Group>()
+  const rootGroup = deepTree(model, groupMap, robot.rootJoint, new THREE.Vector3(0,0,0))
+
+  return { rootGroup, groupMap }
+}
+
+// If robot changes, load the model
+watch(robot, (robot) => {
+  if (!robot)
+    return
+
+  loader.load(`/models/${robot.name}/model.fbx`, (fbx) => {
+    fbx.scale.set(1, 1, 1)
+    fbx.position.set(0, 0, 0)
+
+    const { rootGroup, groupMap } = createTree(robot, fbx)
+    groupJoints = groupMap
+
+    scene.add(rootGroup)
+  }, (_progress) => {}, (error) => {
+    console.error('Unable to load model', error)
+  })
 })
 
 // Update joint angles
-watch(() => props.jointAngles, (angles) => {
-  angles?.forEach((name, angle) => {
-    console.warn(name, angle)
-    // TODO : Rotate the joints
+watch(props.jointAngles, (angles) => {
+  angles.forEach((angle, name) => {
+    const group = groupJoints.get(name)
+    if (group) {
+      let rotationAxis = robot.value?.description.joints[name].rotation
+      if (rotationAxis) {  
+        const float_value =  angle.value.deg * (Math.PI / 180)
+        console.log(`Rotation of ${name}: ${float_value}`)
+        group.setRotationFromAxisAngle(new THREE.Vector3(rotationAxis.x, rotationAxis.y, rotationAxis.z), float_value)
+      }
+    } else {
+      console.warn(`Joint "${name}" not found (Rotation).`)
+    }
   })
 })
 
@@ -145,7 +212,13 @@ watch(pressure, () => {
   if (pressure.value <= 0)
     return
 
-  _clickedObject = targetedObject
+  if (targetedObject) {
+    const vecteur = new THREE.Vector3()
+      targetedObject.object.getWorldPosition(vecteur)
+
+    axesHelper.position.copy(vecteur)
+    console.log(vecteur)
+  }
 })
 
 // Handle window resize

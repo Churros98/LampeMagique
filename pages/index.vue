@@ -1,42 +1,56 @@
 <script setup lang="ts">
+import type { Ref } from 'vue';
+const { initRobot, robot } = useRobot()
+
+onMounted(() => {
+    initRobot('robot_arm')
+})
+
 const targetX = ref(0);
 const targetY = ref(0);
 const targetZ = ref(0);
 
-const angleM1 = ref(0);
-const angleM2 = ref(0);
-const angleM3 = ref(0);
-const angleM4 = ref(0);
+// Create joint angles map when robot is loaded
+const jointAngles = reactive<Map<string, Ref<Angle>>>(new Map());
+watch(robot, (newRobot) => {
+    if (newRobot) {
+        jointAngles.clear();
+        Object.entries(newRobot.description.joints).forEach(([jointName, joint], index) => {
+            if (joint.rotation)
+                jointAngles.set(jointName, ref({ deg: 0 }));
+        });
+    }
+}, { immediate: true });
 
-// Gestion des états
+// State of the application
 const inPause = ref(false);
 
-// Gestion des différents menu
+// Management of the different menus
 const inMenu = ref(false);
 const menuMouvement = ref(false);
 const menuLuminosite = ref(false)
 const menuCamera = ref(false)
 
-const fermerMenus = () => {
+const closeMenus = () => {
     inMenu.value = false
     menuMouvement.value = false
     menuLuminosite.value = false
     menuCamera.value = false
 }
 
-const ouvrirMouvement = () => {
+const openMovementMenu = () => {
     if (inMenu.value) return
     inMenu.value = true
     menuMouvement.value = true
 }
 
-const ouvrirLuminosite = () => {
+const openLuminosityMenu = () => {
     if (inMenu.value) return
     inMenu.value = true
     menuLuminosite.value = true
 }
 
-const ouvrirCamera= () => {
+const openCameraMenu = () => {
     if (inMenu.value) return
     inMenu.value = true
     menuCamera.value = true
@@ -44,13 +58,6 @@ const ouvrirCamera= () => {
 
 // Affichage de l'erreur
 const erreur = ref("");
-
-// Permet de mettre à jour les angles dans la visualisation
-const definirAngles = (jointsAngle: JointAngles[]) => {
-    jointsAngle.forEach(joint => {
-        console.log(joint);
-    })
-}
 
 const deplacementAngles = () => {
     // Envoi des angles au serveur
@@ -66,20 +73,20 @@ const deverrouillage = () => {
     <div class="flex flex-row h-full">
         <!-- Vue 3D -->
         <div :class="inMenu ? 'basis-2/3' : 'basis-full'" class="w-full h-full" style="position: relative;">
-            <Viewer :targetX="targetX" :targetY="targetY" :targetZ="targetZ" />
+            <Viewer :targetX="targetX" :targetY="targetY" :targetZ="targetZ" :jointAngles="jointAngles" />
             <div v-if="erreur" class="absolute w-full text-center bg-pink-500 inset-x-0 bottom-0 p-8">
                 <h1><strong>ERREUR: </strong> {{ erreur }}</h1>
             </div>
 
             <div class="absolute h-full right-0 p-4 text-4xl">
                 <div v-if="!inMenu" class="flex flex-col">
-                    <button v-on:click="ouvrirMouvement"><Icon name="lucide:move-3d" style="color: black" /></button>
-                    <button v-on:click="ouvrirLuminosite"><Icon name="solar:sun-bold" style="color: black" /></button>
-                    <button v-on:click="ouvrirCamera"><Icon name="material-symbols:camera-outline" style="color: black" /></button>
+                    <button v-on:click="openMovementMenu"><Icon name="lucide:move-3d" style="color: black" /></button>
+                    <button v-on:click="openLuminosityMenu"><Icon name="solar:sun-bold" style="color: black" /></button>
+                    <button v-on:click="openCameraMenu"><Icon name="material-symbols:camera-outline" style="color: black" /></button>
                 </div>
 
                 <div v-if="inMenu" class="flex flex-col">
-                    <button v-on:click="fermerMenus"><Icon name="zondicons:close" style="color: black" /></button>
+                    <button v-on:click="closeMenus"><Icon name="zondicons:close" style="color: black" /></button>
                 </div>
             </div>
         </div>
@@ -105,30 +112,14 @@ const deverrouillage = () => {
                         <input v-model.number="targetZ" type="range" value="0" min="-500" max="500" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
                     </label>
 
-                    <label class="block mb-2 text-sm font-medium text-gray-900 text-white">
-                        M1
-                        <input :disabled="!inPause" v-model.number="angleM1" type="range" value="0" min="-180" max="180" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
-                    </label>
+                    <h1 class="text-white text-md">Joints</h1>
 
-                    <label class="block mb-2 text-sm font-medium text-gray-900 text-white">
-                        M2
-                        <input :disabled="!inPause" v-model.number="angleM2" type="range" value="0" min="-180" max="180" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
-                    </label>
-
-                    <label class="block mb-2 text-sm font-medium text-gray-900 text-white">
-                        M3
-                        <input :disabled="!inPause" v-model.number="angleM3" type="range" value="0" min="-180" max="180" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
-                    </label>
-
-                    <label class="block mb-2 text-sm font-medium text-gray-900 text-white">
-                        M4
-                        <input :disabled="!inPause" v-model.number="angleM4" type="range" value="0" min="-180" max="180" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
-                    </label>
-
-                <label class="block mb-2 text-sm font-medium text-gray-900 text-white">
-                        Mettre en pause la mise à jour de position
-                        <input v-model="inPause" type="checkbox">
-                    </label>
+                    <div>
+                        <label v-for="joint in jointAngles" :key="joint[0]" class="block mb-2 text-sm font-medium text-gray-900 text-white">
+                            {{ joint[0] }}
+                            <input v-model.number="joint[1].value.deg" type="range" value="0" :min="joint" max="180" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                        </label>
+                    </div>
 
                     <div class="text-white">
                         <h2>Déplacement</h2>
