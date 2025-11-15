@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import type { Ref } from 'vue';
+import type { Angle } from 'unrobot/robot.t'
+
+import { list_all_joints_from_root } from 'unrobot/joints'
+
 const { initRobot, robot } = useRobot()
 
 onMounted(() => {
@@ -13,13 +17,13 @@ const targetZ = ref(0);
 // Create joint angles map when robot is loaded
 const jointAngles = reactive<Map<string, Ref<Angle>>>(new Map());
 watch(robot, (newRobot) => {
-    if (newRobot) {
-        jointAngles.clear();
-        Object.entries(newRobot.description.joints).forEach(([jointName, joint], index) => {
-            if (joint.rotation)
-                jointAngles.set(jointName, ref({ deg: 0 }));
-        });
-    }
+    if (!newRobot) return;
+    const joints = list_all_joints_from_root(newRobot.rootJoint);
+
+    jointAngles.clear();
+    joints.forEach((joint) => {
+        jointAngles.set(joint.name, ref({ deg: 0 }));
+    });
 }, { immediate: true });
 
 // State of the application
@@ -117,7 +121,7 @@ const deverrouillage = () => {
                     <div>
                         <label v-for="joint in jointAngles" :key="joint[0]" class="block mb-2 text-sm font-medium text-gray-900 text-white">
                             {{ joint[0] }}
-                            <input v-model.number="joint[1].value.deg" type="range" value="0" :min="joint" max="180" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                            <input v-model.number="joint[1].value.deg" type="range" value="0" min="-180" max="180" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
                         </label>
                     </div>
 

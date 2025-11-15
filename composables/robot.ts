@@ -1,8 +1,9 @@
-import type { JointNode, Robot, RobotDescriptor } from '~/utils/robot.t'
-import { parse } from 'yaml'
-import { RobotDescriptorSchema } from '~/utils/robot.t'
+import type { JointNode, Robot, RobotDescriptor } from 'unrobot/robot.t'
+import { RobotDescriptorSchema } from 'unrobot/robot.t'
+import { list_all_joints_from_root } from 'unrobot/joints'
 
 const robot = useState<Robot | undefined>('robot', () => undefined)
+const joints = useState<Map<string, JointNode>>('robot_joints', () => new Map())
 
 // Create a tree structure of JointNodes from the robot description
 function createTree(description: RobotDescriptor): JointNode {
@@ -68,11 +69,11 @@ function createTree(description: RobotDescriptor): JointNode {
   return rootNode
 }
 
-// Load the robot description from a YAML file
+// Load the robot description from a JSON file
 async function loadRobotDescription(name: string): Promise<RobotDescriptor> {
-  const response = await fetch(`models/${name}/description.yml`)
+  const response = await fetch(`models/${name}/description.json`)
   const body = await response.text()
-  const data = parse(body)
+  const data = JSON.parse(body)
   return RobotDescriptorSchema.parse(data)
 }
 
@@ -81,11 +82,16 @@ export async function initRobot(name: string) {
   const description = await loadRobotDescription(name)
   const rootJoint = createTree(description)
 
-  robot.value = { name, description, rootJoint } as Robot
+  joints.value.clear()
+  list_all_joints_from_root(rootJoint).forEach((joint) => {
+    joints.value.set(joint.name, joint)
+  })
+  
+  robot.value = { information: description.information, rootJoint } as Robot
   return robot.value
 }
 
 // Composable to access the robot state, initializing it if necessary
 export function useRobot() {
-  return { initRobot, robot}
+  return { initRobot, robot, joints }
 }

@@ -4,6 +4,9 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { FBXLoader } from 'three/examples/jsm/Addons.js';
 
+import type { Angle } from 'unrobot/robot.t'
+import type { Robot, JointNode } from 'unrobot/robot.t'
+
 const props = defineProps<{
   targetX: number
   targetY: number
@@ -11,8 +14,8 @@ const props = defineProps<{
   jointAngles: Map<string, Ref<Angle>>
 }>()
 
-// Référence
-const { robot } = useRobot()
+// References and state
+const { robot, joints: robotJoints } = useRobot()
 const canvas = useTemplateRef('canvas')
 const scene = new THREE.Scene()
 const loader = new FBXLoader()
@@ -134,12 +137,13 @@ function createTree(robot: Robot, model: THREE.Object3D) {
   return { rootGroup, groupMap }
 }
 
-// If robot changes, load the model
+// If robot changes, load the model and prepare a list of joints
 watch(robot, (robot) => {
   if (!robot)
     return
 
-  loader.load(`/models/${robot.name}/model.fbx`, (fbx) => {
+  // Load the model
+  loader.load(`/models/${robot.information.name}/model.fbx`, (fbx) => {
     fbx.scale.set(1, 1, 1)
     fbx.position.set(0, 0, 0)
 
@@ -152,16 +156,27 @@ watch(robot, (robot) => {
   })
 })
 
-// Update joint angles
-watch(props.jointAngles, (angles) => {
+// Update joint angles when asked
+watchDebounced(props.jointAngles, (angles) => {
+  if (robot.value === undefined)
+    return
+
   angles.forEach((angle, name) => {
     const group = groupJoints.get(name)
-    if (group) {
-      let rotationAxis = robot.value?.description.joints[name].rotation
-      if (rotationAxis) {  
+    if (group && robotJoints.value) {
+      let jointObj = robotJoints.value.get(name)
+      if (!jointObj) {
+        console.warn(`Joint "${name}" not found (Map).`)
+        return
+      }
+      
+      console.log(`Setting angle for joint ${name} to ${angle.value.deg} degrees.`)
+      console.log(JSON.stringify(robotJoints.value))
+
+      if (jointObj.rotation) {
         const float_value =  angle.value.deg * (Math.PI / 180)
         console.log(`Rotation of ${name}: ${float_value}`)
-        group.setRotationFromAxisAngle(new THREE.Vector3(rotationAxis.x, rotationAxis.y, rotationAxis.z), float_value)
+        group.setRotationFromAxisAngle(new THREE.Vector3(jointObj.rotation.x, jointObj.rotation.y, jointObj.rotation.z), float_value)
       }
     } else {
       console.warn(`Joint "${name}" not found (Rotation).`)
