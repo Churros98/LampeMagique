@@ -4,7 +4,7 @@ import type { Angle } from 'unrobot/robot.t'
 
 import { list_all_joints_from_root } from 'unrobot/joints'
 
-const { initRobot, robot } = useRobot()
+const { initRobot, robot, joints: jointsRobot} = useRobot()
 
 onMounted(() => {
     initRobot('robot_arm')
@@ -18,11 +18,16 @@ const targetZ = ref(0);
 const jointAngles = reactive<Map<string, Ref<Angle>>>(new Map());
 watch(robot, (newRobot) => {
     if (!newRobot) return;
-    const joints = list_all_joints_from_root(newRobot.rootJoint);
+    const joints = list_all_joints_from_root(newRobot.rootJoint).filter((value) => {
+        return value.rotation !== undefined
+    })
+
+    console.log(joints)
 
     jointAngles.clear();
     joints.forEach((joint) => {
-        jointAngles.set(joint.name, ref({ deg: 0 }));
+        const delta = (joint.constraint.max - joint.constraint.min) / 2
+        jointAngles.set(joint.name, ref({ deg: joint.constraint.min + delta }));
     });
 }, { immediate: true });
 
@@ -120,8 +125,8 @@ const deverrouillage = () => {
 
                     <div>
                         <label v-for="joint in jointAngles" :key="joint[0]" class="block mb-2 text-sm font-medium text-gray-900 text-white">
-                            {{ joint[0] }}
-                            <input v-model.number="joint[1].value.deg" type="range" value="0" min="-180" max="180" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                                {{ joint[0] }}
+                                <input v-model.number="joint[1].value.deg" type="range" value="0" :min="jointsRobot.get(joint[0])?.constraint.min" :max="jointsRobot.get(joint[0])?.constraint.max" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
                         </label>
                     </div>
 

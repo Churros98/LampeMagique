@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { usePointer } from '@vueuse/core'
+import { usePointer, useWindowSize } from '@vueuse/core'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { FBXLoader } from 'three/examples/jsm/Addons.js';
@@ -29,8 +29,11 @@ const { x, y, pressure } = usePointer({
   target: canvas,
 })
 
+// Window Size
+const { width, height } = useWindowSize()
+
 const ratio = computed(() => {
-  return canvas.value ? (canvas.value.clientWidth / canvas.value.clientHeight) : 1
+  return width.value / height.value
 })
 
 // Debug
@@ -238,11 +241,12 @@ watch(pressure, () => {
 
 // Handle window resize
 watch(ratio, () => {
-  if (canvas.value)
-    renderer.value?.setSize(canvas.value.clientWidth, canvas.value.clientHeight, false)
-
   camera.aspect = ratio.value
   camera.updateProjectionMatrix()
+
+  if (canvas.value)
+    renderer.value?.setPixelRatio(ratio.value)
+    renderer.value?.setSize(width.value, height.value, false)
 })
 </script>
 
