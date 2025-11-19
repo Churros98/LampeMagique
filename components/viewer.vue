@@ -19,8 +19,9 @@ const { robot, joints: robotJoints } = useRobot()
 const canvas = useTemplateRef('canvas')
 const scene = new THREE.Scene()
 const loader = new FBXLoader()
-const renderer = shallowRef<THREE.WebGLRenderer | undefined>()
-const controleOrbite = shallowRef<OrbitControls | undefined>()
+
+let renderer: THREE.WebGLRenderer | undefined = undefined
+let controleOrbite: OrbitControls | undefined = undefined
 
 let groupJoints = new Map<string, THREE.Group>()
 
@@ -36,10 +37,6 @@ const ratio = computed(() => {
   return width.value / height.value
 })
 
-// Debug
-const axesHelper = new THREE.AxesHelper(200)
-scene.add(axesHelper)
-
 // Preparing camera
 const camera = new THREE.PerspectiveCamera(75, ratio.value, 100, 5000)
 camera.up.set( 0, 0, 1 )
@@ -51,8 +48,8 @@ scene.add(camera)
 // Preparing interactions
 const pointer = new THREE.Vector2(0, 0)
 const raycaster = new THREE.Raycaster()
-let targetedObject: THREE.Intersection | undefined
-let clickedObject: THREE.Intersection | undefined
+let raycastedObject: THREE.Intersection | undefined
+let movedJointGroup: THREE.Group | undefined
 
 // Adding light
 const color = 0xFFFFFF
@@ -96,7 +93,7 @@ watch(targetPos, () => {
   target.position.set(targetPos.x + offset.x, targetPos.y + offset.y, targetPos.z + offset.z)
 })
 
-// Recursive function to create the tree structure
+// Recursive function to create the 3D tree structure
 function deepTree(model: THREE.Object3D, groupMap: Map<string, THREE.Group>, joint: JointNode, offset: THREE.Vector3) {
   // Check if the joint name is unique
   if (groupMap.has(joint.name))
@@ -140,6 +137,37 @@ function createTree(robot: Robot, model: THREE.Object3D) {
   return { rootGroup, groupMap }
 }
 
+// Find closest joint from a point
+function findClosestJoint(position: THREE.Vector3): THREE.Group | undefined {
+  let closestObject: THREE.Group | undefined = undefined
+  let closestDistance = Number.MAX_SAFE_INTEGER
+
+  groupJoints.forEach((joint, _name) => {
+    const jointPosition = new THREE.Vector3()
+    joint.getWorldPosition(jointPosition)
+
+    const distance = position.distanceTo(jointPosition)
+    if (distance < closestDistance) {
+      closestDistance = distance
+      closestObject = joint
+    }
+  })
+
+  return closestObject
+}
+
+// Get joint by group
+function getAngleBy3DGroup(group: THREE.Group): Ref<Angle> | undefined {
+  let result: Ref<Angle> | undefined = undefined
+  groupJoints.forEach((jointGroup, name) => {
+    if (group == jointGroup) {
+      result = props.jointAngles.get(name)
+    }
+  })
+
+  return result
+}
+
 // If robot changes, load the model and prepare a list of joints
 watch(robot, (robot) => {
   if (!robot)
@@ -172,13 +200,9 @@ watchDebounced(props.jointAngles, (angles) => {
         console.warn(`Joint "${name}" not found (Map).`)
         return
       }
-      
-      console.log(`Setting angle for joint ${name} to ${angle.value.deg} degrees.`)
-      console.log(JSON.stringify(robotJoints.value))
 
       if (jointObj.rotation) {
         const float_value =  angle.value.deg * (Math.PI / 180)
-        console.log(`Rotation of ${name}: ${float_value}`)
         group.setRotationFromAxisAngle(new THREE.Vector3(jointObj.rotation.x, jointObj.rotation.y, jointObj.rotation.z), float_value)
       }
     } else {
@@ -192,13 +216,27 @@ function animation() {
   // Get the closest object intersected by the ray (mouse pointer)
   raycaster.setFromCamera(pointer, camera)
   const intersections = raycaster.intersectObjects(scene.children)
-  targetedObject = intersections.length ? intersections[0] : undefined
+  raycastedObject = intersections.length ? intersections[0] : undefined
 
   // Navigate through the scene
-  controleOrbite.value?.update()
+  if (controleOrbite) {
+    controleOrbite.update()
+    controleOrbite.enableRotate = movedJointGroup === undefined
+  }
+
+  if (movedJointGroup !== undefined) {
+    const jointName = movedJointGroup.name.replace('_group', '')
+    
+    const jointNode = robotJoints.value.get(jointName)
+    const jointAngle = props.jointAngles.get(jointName)
+
+    if (jointNode !== undefined && jointAngle !== undefined) {
+      console.log(`Constraint: ${jointNode.constraint}`)
+    }
+  }
 
   // Render the image
-  renderer.value?.render(scene, camera)
+  renderer?.render(scene, camera)
 }
 
 // When the component is mounted, initialize the renderer and controls
@@ -206,15 +244,14 @@ onMounted(() => {
   if (!canvas.value)
     return
 
-  renderer.value = new THREE.WebGLRenderer({
+  renderer = new THREE.WebGLRenderer({
     canvas: canvas.value,
     antialias: true,
   })
 
-  renderer.value?.setSize(canvas.value.clientWidth, canvas.value.clientHeight, false)
-  controleOrbite.value = new OrbitControls(camera, renderer.value.domElement)
-
-  renderer.value.setAnimationLoop(animation)
+  renderer?.setSize(canvas.value.clientWidth, canvas.value.clientHeight, false)
+  controleOrbite = new OrbitControls(camera, renderer.domElement)
+  renderer?.setAnimationLoop(animation)
 })
 
 // Update the pointer coordinates when the mouse moves
@@ -227,15 +264,13 @@ watch([x, y], () => {
 
 // Handle click events
 watch(pressure, () => {
-  if (pressure.value <= 0)
+  if (pressure.value <= 0) {
+    movedJointGroup = undefined
     return
+  }
 
-  if (targetedObject) {
-    const vecteur = new THREE.Vector3()
-      targetedObject.object.getWorldPosition(vecteur)
-
-    axesHelper.position.copy(vecteur)
-    console.log(vecteur)
+  if (raycastedObject !== undefined && movedJointGroup === undefined) {
+    movedJointGroup = findClosestJoint(raycastedObject.point)
   }
 })
 
@@ -245,8 +280,8 @@ watch(ratio, () => {
   camera.updateProjectionMatrix()
 
   if (canvas.value)
-    renderer.value?.setPixelRatio(ratio.value)
-    renderer.value?.setSize(width.value, height.value, false)
+    renderer?.setPixelRatio(ratio.value)
+    renderer?.setSize(width.value, height.value, false)
 })
 </script>
 
